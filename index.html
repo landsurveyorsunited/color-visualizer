@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>color visualizer</title>
+  <link href="https://fonts.googleapis.com/css?family=Slabo+27px" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+
+  
+      <link rel="stylesheet" href="css/style.css">
+
+  
+</head>
+
+<body>
+  <section id="app" v-cloak>
+  <h1 :style="text">\\ C O L O R - V I S U A L I Z E R</h1>
+  
+  <!-- notifications -->
+  <div class="notif-container">
+    <transition-group name="slide-fade" tag="ul">
+      <li v-for="(n, i) in notifs" 
+          :key="i" 
+          v-if="hideNotif(i)" 
+          class="notif" 
+          :style="all">
+        {{ n.text }}
+      </li>
+    </transition-group>
+  </div>
+  
+  <section class="text">
+    <!-- inputs -->
+    <div class="text__left">
+      <ul>
+        <li :style="text">* one color per line</li>
+        <li :style="text">* use any valid color format ( hsl, rgb, hex, etc... )</li>
+      </ul>
+      
+      <textarea v-model="rawList" :style="all"></textarea>
+      <br>
+      
+      <label>
+        Background Color:
+        <input v-model="bg" :style="all">
+      </label>
+      
+      <label>
+        Text Color:
+        <input v-model="txt" :style="all">
+      </label>
+    </div>
+    
+    <!-- helpers -->
+    <div :style="border" class="text__right">
+      <h3 :style="text">Helpers :</h3>
+      
+      <ul :style="border">
+        <li>
+          <a :style="text" href="http://www.molbiotools.com/textextractor.html" target="_blank">http://www.molbiotools.com/textextractor.html</a>
+        </li>
+        <li>
+          <a :style="text" href="http://www.molbiotools.com/listmanipulator.html" target="_blank">http://www.molbiotools.com/listmanipulator.html</a>
+        </li>
+        <li>
+          <a :style="text" href="http://blog.darkwark.com/parseColors/" target="_blank">http://blog.darkwark.com/parseColors/</a>
+        </li>
+      </ul>
+      
+      <!-- ops -->
+      <table :style="all">
+        <thead>
+          <th :style="{'border-color': tc(bg)}">Keyboard / Mouse</th>
+          <th :style="{'border-color': tc(bg)}">Operation</th>
+        </thead>
+        <tbody>
+          <tr>
+            <td :style="{'border-color': tc(bg)}">Click</td>
+            <td :style="{'border-color': tc(bg)}">Copy Color #code</td>
+          </tr>
+          <tr>
+            <td :style="{'border-color': tc(bg)}">Click & Drag</td>
+            <td :style="{'border-color': tc(bg)}">Sort Colors List</td>
+          </tr>
+          <tr>
+            <td :style="{'border-color': tc(bg)}">Shift + Click</td>
+            <td :style="{'border-color': tc(bg)}">Remove Color</td>
+          </tr>
+        </tbody>
+      </table>
+      
+    </div>
+  </section>
+  
+  <!-- total colors avail -->
+  <h3 class="total" 
+      v-if="colorsList.length" 
+      :style="[{'background-color': tc(bg)}, border]">
+    Total: <small>{{ colorsList.length }}</small>  
+  </h3>
+  
+  <section v-if="colorsList.length" class="colors">
+    <!-- colors list -->
+    <draggable :list="colorsList" @change.moved="showSaveBtn = true" class="colors__list">
+      <transition-group name="slide-fade" tag="ul">
+        <li v-for="(c, i) in colorsList" 
+            :key="i" 
+            :style="bubblePad" 
+            v-if="c !== ''" 
+            @click="handleClick($event, c)" 
+            :data-clipboard-text="formatColor(c)" 
+            class="item">
+
+          <p :style="[{ 'background-color': tc(c).toHexString()}, bubbleSize]" class="colors__circle">
+            <span :style="{'color': tc(bg).toHexString()}" v-if="showNames">{{ getColorName(c) }}</span>
+          </p>
+
+          <p v-if="showCodes">
+            {{ formatColor(c) }}
+            <span v-if="c == temp">"ph"</span>
+          </p>
+        </li>
+      </transition-group>
+    </draggable>
+    
+    
+    <!-- sidebar -->
+    <div class="colors__sidebar" :style="border">
+      <div class="colors__sidebar-data">
+        <!-- hex format -->
+        <div class="radio" :style="border">
+          <label>Color Format :</label>
+          <br>
+          <label>RGB: <input type="radio" value="rgb" v-model="codeFormat"></label>
+          <label>RGBA: <input type="radio" value="rgba" v-model="codeFormat"></label>
+        </div>
+        
+        <!-- bubble size -->
+        <div class="range" :style="border">
+          <label>Bubble Size :</label>
+          <input type="range" min="10" max="300" value="100" 
+                 v-model="size" 
+                 :style="{'background-color': tc(txt)}">
+        </div>
+        
+        <!-- show colors info -->
+        <button @click="showCodes =! showCodes" :style="all">Toggle Codes</button>
+        <button @click="showNames =! showNames" :style="all">Toggle Names</button>
+        
+        
+        <!-- removed colors -->
+        <button v-if="removedColors.length" @click="undoRemovedColor()" :style="all">
+          Undo Removed
+        </button>
+        
+        <ul v-if="removedColors.length" :style="all">
+          <li v-for="r in removedColors">{{ r.v }}</li>
+        </ul>
+        
+        <!-- save list to file -->
+        <button v-if="showSaveBtn" @click="saveList()" :style="all">
+          Save Changes To File
+        </button>
+      </div>
+    </div>
+  </section>
+</section>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/vue/2.4.4/vue.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.1/tinycolor.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.7.1/clipboard.min.js'></script>
+<script src='https://s3-us-west-2.amazonaws.com/s.cdpn.io/14082/FileSaver.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.6.0/Sortable.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.14.1/vuedraggable.min.js'></script>
+
+    <script  src="js/index.js"></script>
+
+</body>
+</html>
